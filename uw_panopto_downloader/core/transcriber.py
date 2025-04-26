@@ -1,29 +1,30 @@
-import time
 from typing import Optional
-import typer
 
 
 def _check_whisper_installed():
     """Check if the Whisper ASR model is installed."""
     try:
-        import whisper
-        import torch
+        import torch  # noqa: F401
+        import whisper  # noqa: F401
+
         return True
     except ImportError:
         return False
+
 
 class Transcriber:
     def __init__(self, model_name: str):
         if not _check_whisper_installed():
             raise ImportError("Whisper not installed... no transcription will be done")
-        import whisper
         import torch
+        import whisper
+
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {device}")
         self.model = whisper.load_model(model_name).to(device)
         self.model_name = model_name
 
-    def transcribe(self, audio_path: str, output_path: str = None):
+    def transcribe(self, audio_path: str, output_path: Optional[str] = None):
         """Transcribe audio using Whisper ASR model.
 
         Args:
@@ -33,8 +34,9 @@ class Transcriber:
         Returns:
             str: Transcription text (including timestamps)
         """
-        import whisper
-        result = self.model.transcribe(audio_path, language="en", temperature=0.0, word_timestamps=True)
+        result = self.model.transcribe(
+            audio_path, language="en", temperature=0.0, word_timestamps=True
+        )
         text_with_timestamps = result["segments"]
 
         transcription = ""
@@ -49,6 +51,7 @@ class Transcriber:
                 f.write(transcription)
 
         return transcription
+
 
 def transcribe_command(
     input_path: str,
