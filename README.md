@@ -1,25 +1,136 @@
 # UW Panopto Downloader
 
-Download lectures in bulk
+A Python tool for downloading videos from UW Panopto and optionally converting them to audio format.
 
-## Setup
+## Features
 
-1. Clone the repository
+- Interactive browser-based login to access your Panopto content
+- Extract video links from Panopto course pages
+- Concurrent downloading of multiple videos
+- Video to audio conversion (MP4 to MP3)
+- User-friendly command line interface with rich formatting
+- Configurable settings saved between sessions
+
+## Installation
+
 ```bash
-git clone git@github.com:elimelt/uw-panopto-downloader.git
+# From PyPI
+pip install uw-panopto-downloader
+
+# From source
+git clone https://github.com/elimelt/uw-panopto-downloader.git
 cd uw-panopto-downloader
+pip install -e .
 ```
 
-2. Create a virtual environment
+## Requirements
+
+- Python 3.11 or higher
+- FFmpeg (for video downloads and conversion)
+- Chrome or Chromium browser (for Selenium)
+
+## Usage
+
+### Command Line Interface
+
+The package provides a command-line tool `uw-panopto-dl` with several subcommands:
+
 ```bash
-python -m venv venv
-# macOS/Linux
-source venv/bin/activate
-# Windows
-venv\Scripts\activate
+# Show help
+uw-panopto-dl --help
+
+# Download videos
+uw-panopto-dl download [OPTIONS]
+
+# Convert videos to audio
+uw-panopto-dl convert [INPUT] [OPTIONS]
+
+# View or update configuration
+uw-panopto-dl config [OPTIONS]
+
+# Show version
+uw-panopto-dl version
 ```
 
-3. Install dependencies
+### Download Command
+
 ```bash
-pip install -r requirements.txt
+# Start an interactive download session
+uw-panopto-dl download
+
+# Specify a starting URL
+uw-panopto-dl download --url "https://panopto.uw.edu/your-course-page"
+
+# Set output directory
+uw-panopto-dl download --output "path/to/downloads"
+
+# Set number of concurrent downloads
+uw-panopto-dl download --workers 5
+
+# Run in headless mode (no browser window)
+uw-panopto-dl download --headless
 ```
+
+### Convert Command
+
+```bash
+# Convert a single video
+uw-panopto-dl convert video.mp4
+
+# Convert with output path
+uw-panopto-dl convert video.mp4 --output audio.mp3
+
+# Convert a directory of videos
+uw-panopto-dl convert videos_dir/ --output audio_dir/
+
+# Set audio bitrate
+uw-panopto-dl convert video.mp4 --bitrate 320k
+
+# Set number of FFmpeg threads
+uw-panopto-dl convert video.mp4 --threads 4
+```
+
+### Config Command
+
+```bash
+# Show current configuration
+uw-panopto-dl config --show
+
+# Update configuration
+uw-panopto-dl config --download-dir "path/to/downloads" --max-workers 4
+```
+
+## Python API
+
+You can also use the package programmatically:
+
+```python
+from uw_panopto_downloader.core import BrowserSession, PanoptoDownloader, VideoConverter
+
+# Initialize a browser session
+browser = BrowserSession(headless=False)
+browser.manual_login("https://panopto.uw.edu/your-course-page")
+
+# Download videos
+downloader = PanoptoDownloader(browser, max_workers=3)
+video_links = browser.extract_links()
+downloader.download_videos(video_links, "downloads")
+
+# Convert videos to audio
+converter = VideoConverter(bitrate="192k")
+converter.convert_directory("downloads", "audio")
+```
+
+## Configuration
+
+The configuration is stored in `~/.uw-panopto-downloader/config.json` and includes:
+
+- `download_dir`: Default download directory
+- `max_workers`: Maximum number of concurrent downloads
+- `headless`: Whether to run the browser in headless mode
+- `audio_bitrate`: Default audio bitrate for conversion
+- `ffmpeg_threads`: Default number of FFmpeg threads
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.

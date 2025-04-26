@@ -24,7 +24,10 @@ dependencies = [
     "requests>=2.25.0",
     "beautifulsoup4>=4.9.3",
     "selenium>=4.1.0",
-    "webdriver-manager>=3.5.2"
+    "webdriver-manager>=3.5.2",
+    "rich>=10.0.0",  # Terminal formatting
+    "typer>=0.4.0",  # Command line interface
+    "click>=8.0.0",  # Required by typer
 ]
 
 [project.optional-dependencies]
@@ -43,7 +46,7 @@ Repository = "https://github.com/elimelt/uw-panopto-downloader.git"
 "Bug Tracker" = "https://github.com/elimelt/uw-panopto-downloader/issues"
 
 [project.scripts]
-uw-panopto-downloader = "uw_panopto_downloader.cli:main"
+uw-panopto-dl = "uw_panopto_downloader.cli.app:app"
 
 [tool.hatch.build.targets.wheel]
 packages = ["uw_panopto_downloader"]
