@@ -33,71 +33,71 @@ pip install -e .
 
 ### Command Line Interface
 
-The package provides a command-line tool `uw-panopto-dl` with several subcommands:
+The package provides a command-line tool `uwpd` with several subcommands:
 
 ```bash
 # Show help
-uw-panopto-dl --help
+uwpd --help
 
 # Download videos
-uw-panopto-dl download [OPTIONS]
+uwpd download [OPTIONS]
 
 # Convert videos to audio
-uw-panopto-dl convert [INPUT] [OPTIONS]
+uwpd convert [INPUT] [OPTIONS]
 
 # View or update configuration
-uw-panopto-dl config [OPTIONS]
+uwpd config [OPTIONS]
 
 # Show version
-uw-panopto-dl version
+uwpd version
 ```
 
 ### Download Command
 
 ```bash
 # Start an interactive download session
-uw-panopto-dl download
+uwpd download
 
 # Specify a starting URL
-uw-panopto-dl download --url "https://panopto.uw.edu/your-course-page"
+uwpd download --url "https://panopto.uw.edu/your-course-page"
 
 # Set output directory
-uw-panopto-dl download --output "path/to/downloads"
+uwpd download --output "path/to/downloads"
 
 # Set number of concurrent downloads
-uw-panopto-dl download --workers 5
+uwpd download --workers 5
 
 # Run in headless mode (no browser window)
-uw-panopto-dl download --headless
+uwpd download --headless
 ```
 
 ### Convert Command
 
 ```bash
 # Convert a single video
-uw-panopto-dl convert video.mp4
+uwpd convert video.mp4
 
 # Convert with output path
-uw-panopto-dl convert video.mp4 --output audio.mp3
+uwpd convert video.mp4 --output audio.mp3
 
 # Convert a directory of videos
-uw-panopto-dl convert videos_dir/ --output audio_dir/
+uwpd convert videos_dir/ --output audio_dir/
 
 # Set audio bitrate
-uw-panopto-dl convert video.mp4 --bitrate 320k
+uwpd convert video.mp4 --bitrate 320k
 
 # Set number of FFmpeg threads
-uw-panopto-dl convert video.mp4 --threads 4
+uwpd convert video.mp4 --threads 4
 ```
 
 ### Config Command
 
 ```bash
 # Show current configuration
-uw-panopto-dl config --show
+uwpd config --show
 
 # Update configuration
-uw-panopto-dl config --download-dir "path/to/downloads" --max-workers 4
+uwpd config --download-dir "path/to/downloads" --max-workers 4
 ```
 
 ## Python API

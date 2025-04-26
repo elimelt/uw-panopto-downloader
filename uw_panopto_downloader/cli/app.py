@@ -13,7 +13,7 @@ from .utils import check_dependencies, print_header, print_info, print_warning
 
 # Create Typer app
 app = typer.Typer(
-    name="uw-panopto-dl",
+    name="uwpd",
     help="Download and convert videos from UW Panopto",
     add_completion=False,
 )
