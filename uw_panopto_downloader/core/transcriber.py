@@ -19,6 +19,8 @@ class Transcriber:
         import torch
         import whisper
 
+        torch.set_num_threads(1)
+
         device = "cuda" if torch.cuda.is_available() else "cpu"
         print(f"Using device: {device}")
         self.model = whisper.load_model(model_name).to(device)
