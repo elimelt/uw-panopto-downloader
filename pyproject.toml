@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "uw-panopto-downloader"
-version = "1.0.4"
+version = "1.0.5"
 description = "A Python library for downloading videos from UW Panopto"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -67,7 +67,7 @@ ensure_newline_before_comments = true
 
 [tool.ruff]
 line-length = 100
-target-version = "py38"
+target-version = "1.0.5"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "B", "UP", "PL", "RUF"]
