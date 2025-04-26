@@ -52,6 +52,30 @@ class Transcriber:
 
         return transcription
 
+def transcribe_directory(
+    input_dir: str,
+    output_dir: Optional[str] = None,
+    model: Optional[str] = "base",
+) -> None:
+    """Transcribe all audio files in a directory to text with timestamps."""
+    import os
+
+    if not os.path.exists(input_dir):
+        raise FileNotFoundError(f"Input directory {input_dir} does not exist")
+
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    transcriber = Transcriber(model)
+    for filename in os.listdir(input_dir):
+        if filename.endswith(".wav") or filename.endswith(".mp3"):
+            input_path = os.path.join(input_dir, filename)
+            output_path = (
+                os.path.join(output_dir, f"{os.path.splitext(filename)[0]}.txt")
+                if output_dir
+                else None
+            )
+            transcriber.transcribe(input_path, output_path)
 
 def transcribe_command(
     input_path: str,
@@ -59,6 +83,15 @@ def transcribe_command(
     model: Optional[str] = "base",
 ) -> None:
     """Transcribe audio files to text with timestamps."""
+
+    import os
+
+    if not os.path.exists(input_path):
+        raise FileNotFoundError(f"Input file {input_path} does not exist")
+    # check if input_path is a directory
+    if os.path.isdir(input_path):
+        transcribe_directory(input_path, output_path, model)
+        return
+
     transcriber = Transcriber(model)
-    transcription = transcriber.transcribe(input_path, output_path)
-    print(transcription)
+    transcriber.transcribe(input_path, output_path)
