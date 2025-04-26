@@ -59,6 +59,20 @@ def convert(
     """Convert video files to audio format."""
     convert_command(input_path, output_path, bitrate, threads)
 
+@app.command("transcribe", help="Transcribe audio files to text")
+def transcribe(
+    input_path: str = typer.Argument(..., help="Input audio file"),
+    output_path: Optional[str] = typer.Option(
+        'transcript.txt', "--output", "-o", help="Output text file"
+    ),
+    model: Optional[str] = typer.Option(
+        'turbo', "--model", "-m", help="Whisper model name (e.g. tiny, base, small, medium, large)"
+    ),
+) -> None:
+    """Transcribe audio files to text."""
+    from ..core.transcriber import transcribe_command
+    transcribe_command(input_path, output_path, model)
+
 
 @app.command("config", help="View or update configuration")
 def config_command(
