@@ -1,6 +1,6 @@
 """UW Panopto Downloader - A tool for downloading videos from UW Panopto."""
 
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 
 # Check for required dependencies
 def _check_dependencies():
