@@ -1,0 +1,78 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "uw-panopto-downloader"
+version = "1.0.0"
+description = "A Python library for downloading videos from UW Panopto"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+keywords = ["panopto", "video", "downloader", "python"]
+authors = [
+    { name = "Elijah Melton", email = "elimelt@uw.edu" }
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+]
+
+dependencies = [
+    "requests>=2.25.0",
+    "beautifulsoup4>=4.9.3",
+    "selenium>=4.1.0",
+    "webdriver-manager>=3.5.2"
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=22.0.0",
+    "isort>=5.0.0",
+    "flake8>=5.0.0",
+    "pre-commit>=3.5.0",
+    "ruff>=0.2.0"
+]
+
+[project.urls]
+Homepage = "https://github.com/elimelt/uw-panopto-downloader"
+Documentation = "https://github.com/elimelt/uw-panopto-downloader#readme"
+Repository = "https://github.com/elimelt/uw-panopto-downloader.git"
+"Bug Tracker" = "https://github.com/elimelt/uw-panopto-downloader/issues"
+
+[project.scripts]
+uw-panopto-downloader = "uw_panopto_downloader.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["uw_panopto_downloader"]
+
+[tool.black]
+line-length = 100
+target-version = ["py38"]
+include = '\.pyi?$'
+
+[tool.isort]
+profile = "black"
+line-length = 100
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py38"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "B", "UP", "PL", "RUF"]
+ignore = ["PLR0912", "PLR0913", "PLR2004"]  # Ignore complexity and magic number checks
+
+[tool.ruff.lint.isort]
+known-first-party = ["uw_panopto_downloader"]
+
+[tool.ruff.lint.flake8-quotes]
+docstring-quotes = "double"
+inline-quotes = "single"
