@@ -1,15 +1,14 @@
 """Configuration management for Panopto Downloader."""
 
-import os
 import json
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, ClassVar, Dict
 
 
 class Config:
     """Configuration manager for Panopto Downloader."""
 
-    DEFAULT_CONFIG = {
+    DEFAULT_CONFIG: ClassVar = {
         "download_dir": "downloads",
         "max_workers": 3,
         "headless": False,
@@ -31,10 +30,10 @@ class Config:
             return
 
         try:
-            with open(self.config_file, "r") as f:
+            with open(self.config_file) as f:
                 loaded_config = json.load(f)
                 self.settings.update(loaded_config)
-        except (json.JSONDecodeError, IOError) as e:
+        except (OSError, json.JSONDecodeError) as e:
             print(f"Warning: Failed to load config file: {e}")
             # Continue with defaults
 
@@ -44,7 +43,7 @@ class Config:
         try:
             with open(self.config_file, "w") as f:
                 json.dump(self.settings, f, indent=2)
-        except IOError as e:
+        except OSError as e:
             print(f"Warning: Failed to save config file: {e}")
 
     def get(self, key: str, default: Any = None) -> Any:

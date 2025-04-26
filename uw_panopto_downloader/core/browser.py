@@ -1,9 +1,8 @@
 """Browser session manager for Panopto Downloader."""
 
 import time
-import logging
+from typing import List, Tuple
 from urllib.parse import urlparse
-from typing import Dict, Any, List, Tuple, Optional
 
 import requests
 from bs4 import BeautifulSoup
@@ -11,8 +10,8 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
 from ..utils.logging import get_logger
@@ -25,7 +24,7 @@ class BrowserSession:
 
     def __init__(self, headless: bool = False):
         """Initialize the browser session.
-        
+
         Args:
             headless: Whether to run the browser in headless mode
         """
@@ -36,7 +35,7 @@ class BrowserSession:
 
     def setup(self) -> bool:
         """Set up the Selenium WebDriver.
-        
+
         Returns:
             bool: Whether setup was successful
         """
@@ -62,23 +61,23 @@ class BrowserSession:
 
     def manual_login(self, url: str) -> bool:
         """Open browser for manual login and wait for user confirmation.
-        
+
         Args:
             url: The URL to open for login
-            
+
         Returns:
             bool: Whether login was successful
         """
         if not self.driver:
             if not self.setup():
                 return False
-                
+
         try:
             logger.info(f"Opening {url} for manual login")
             self.driver.get(url)
 
             logger.info("Waiting for manual login...")
-            
+
             # Get the cookies from selenium session after login
             cookies = self.driver.get_cookies()
             for cookie in cookies:
@@ -95,10 +94,10 @@ class BrowserSession:
 
     def navigate_to(self, url: str) -> bool:
         """Navigate to a new URL within the same session.
-        
+
         Args:
             url: The URL to navigate to
-            
+
         Returns:
             bool: Whether navigation was successful
         """
@@ -133,7 +132,7 @@ class BrowserSession:
 
     def extract_links(self) -> List[Tuple[str, str]]:
         """Extract video links and titles from the current page.
-        
+
         Returns:
             list: List of (link, title) tuples
         """
@@ -144,7 +143,7 @@ class BrowserSession:
         try:
             # Wait for page to fully load
             WebDriverWait(self.driver, 10).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "a.detail-title, .list-item"))
+                ec.presence_of_element_located((By.CSS_SELecTOR, "a.detail-title, .list-item"))
             )
 
             # Get current page HTML
@@ -160,7 +159,7 @@ class BrowserSession:
                     link = a.get('href')
                     # Try to get title from aria-label first, then from text content
                     title = a.get('aria-label') or a.text.strip()
-                    
+
                     if link and title:
                         # Clean the title for use as filename
                         title = self._clean_filename(title)
@@ -206,10 +205,10 @@ class BrowserSession:
 
     def _get_base_url(self, url: str) -> str:
         """Extract the base URL (domain) from a full URL.
-        
+
         Args:
             url: The full URL
-            
+
         Returns:
             str: The base URL
         """
@@ -220,10 +219,10 @@ class BrowserSession:
     @staticmethod
     def _clean_filename(filename: str) -> str:
         """Clean a string to make it suitable for use as a filename.
-        
+
         Args:
             filename: The original filename
-            
+
         Returns:
             str: The cleaned filename
         """

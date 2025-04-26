@@ -2,9 +2,7 @@
 
 import os
 import re
-import shutil
-from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from .logging import get_logger
 
@@ -13,10 +11,10 @@ logger = get_logger(__name__)
 
 def clean_filename(filename: str) -> str:
     """Clean a string to make it suitable for use as a filename.
-    
+
     Args:
         filename: The original filename
-        
+
     Returns:
         str: The cleaned filename
     """
@@ -29,10 +27,10 @@ def clean_filename(filename: str) -> str:
 
 def ensure_directory(directory: str) -> bool:
     """Ensure a directory exists, creating it if necessary.
-    
+
     Args:
         directory: Path to the directory
-        
+
     Returns:
         bool: Whether directory exists or was created
     """
@@ -46,7 +44,7 @@ def ensure_directory(directory: str) -> bool:
 
 def check_ffmpeg_installed() -> bool:
     """Check if FFmpeg is installed and available.
-    
+
     Returns:
         bool: Whether FFmpeg is installed
     """
@@ -60,10 +58,10 @@ def check_ffmpeg_installed() -> bool:
 
 def get_available_space(directory: str) -> Optional[int]:
     """Get available disk space in bytes for a directory.
-    
+
     Args:
         directory: Path to check
-        
+
     Returns:
         int: Available space in bytes, or None if error
     """
@@ -84,10 +82,10 @@ def get_available_space(directory: str) -> Optional[int]:
 
 def get_file_size(file_path: str) -> Optional[int]:
     """Get file size in bytes.
-    
+
     Args:
         file_path: Path to the file
-        
+
     Returns:
         int: File size in bytes, or None if file doesn't exist
     """
@@ -99,10 +97,10 @@ def get_file_size(file_path: str) -> Optional[int]:
 
 def format_size(size_bytes: int) -> str:
     """Format file size in a human-readable format.
-    
+
     Args:
         size_bytes: Size in bytes
-        
+
     Returns:
         str: Formatted size string
     """

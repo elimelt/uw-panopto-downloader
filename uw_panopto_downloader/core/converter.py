@@ -1,14 +1,13 @@
 """Core functionality for converting videos to audio."""
 
-import os
 import glob
-import subprocess
-import time
 import multiprocessing
-from typing import List, Tuple, Optional
+import os
+import subprocess
+from typing import List, Optional, Tuple
 
-from .config import config
 from ..utils.logging import get_logger
+from .config import config
 
 logger = get_logger(__name__)
 
@@ -16,9 +15,9 @@ logger = get_logger(__name__)
 class VideoConverter:
     """Handles conversion of video files to audio formats."""
 
-    def __init__(self, bitrate: str = None, threads: int = None):
+    def __init__(self, bitrate: Optional[str] = None, threads: Optional[int] = None):
         """Initialize the converter.
-        
+
         Args:
             bitrate: Audio bitrate for conversion
             threads: Number of FFmpeg threads to use
@@ -28,38 +27,43 @@ class VideoConverter:
 
     def find_video_files(self, directory: str, extension: str = "mp4") -> List[str]:
         """Find all video files of a specific extension in a directory.
-        
+
         Args:
             directory: The directory to search in
             extension: The file extension to search for
-            
+
         Returns:
             list: List of file paths
         """
         pattern = os.path.join(directory, "**", f"*.{extension}")
         return glob.glob(pattern, recursive=True)
 
-    def convert_file(self, video_path: str, output_path: Optional[str] = None, 
-                    bitrate: Optional[str] = None, threads: Optional[int] = None) -> bool:
+    def convert_file(
+        self,
+        video_path: str,
+        output_path: Optional[str] = None,
+        bitrate: Optional[str] = None,
+        threads: Optional[int] = None,
+    ) -> bool:
         """Convert a single video file to audio.
-        
+
         Args:
             video_path: Path to the video file
             output_path: Path to save the audio file
             bitrate: Audio bitrate
             threads: Number of FFmpeg threads to use
-            
+
         Returns:
             bool: Whether conversion was successful
         """
         # Use instance defaults if not specified
         bitrate = bitrate or self.bitrate
         threads = threads if threads is not None else self.threads
-        
+
         # Generate output path if not provided
         if not output_path:
             output_path = os.path.splitext(video_path)[0] + ".mp3"
-        
+
         # Skip if output file already exists
         if os.path.exists(output_path):
             logger.info(f"Skipping existing file: {output_path}")
@@ -84,18 +88,25 @@ class VideoConverter:
         # Run FFmpeg command
         cmd = [
             "ffmpeg",
-            "-i", video_path,
-            "-threads", str(threads),
-            "-vn",                     # No video
-            "-b:a", bitrate,           # Audio bitrate
-            "-c:a", "libmp3lame",      # MP3 codec
-            "-map_metadata", "0",      # Copy metadata
-            "-stats",                  # Show progress
-            "-y",                      # Overwrite output
-            output_path
+            "-i",
+            video_path,
+            "-threads",
+            str(threads),
+            "-vn",  # No video
+            "-b:a",
+            bitrate,  # Audio bitrate
+            "-c:a",
+            "libmp3lame",  # MP3 codec
+            "-map_metadata",
+            "0",  # Copy metadata
+            "-stats",  # Show progress
+            "-y",  # Overwrite output
+            output_path,
         ]
 
-        logger.info(f"Converting: {os.path.basename(video_path)} -> {os.path.basename(output_path)}")
+        logger.info(
+            f"Converting: {os.path.basename(video_path)} -> {os.path.basename(output_path)}"
+        )
 
         try:
             subprocess.run(cmd, check=True)
@@ -104,24 +115,29 @@ class VideoConverter:
         except subprocess.CalledProcessError as e:
             logger.error(f"Error converting {video_path}: {e}")
             return False
-            
-    def convert_directory(self, input_dir: str, output_dir: Optional[str] = None,
-                         bitrate: Optional[str] = None, threads: Optional[int] = None) -> Tuple[int, int]:
+
+    def convert_directory(
+        self,
+        input_dir: str,
+        output_dir: Optional[str] = None,
+        bitrate: Optional[str] = None,
+        threads: Optional[int] = None,
+    ) -> Tuple[int, int]:
         """Process all video files in a directory and convert to audio.
-        
+
         Args:
             input_dir: Directory containing video files
             output_dir: Directory to save audio files to
             bitrate: Audio bitrate
             threads: Number of FFmpeg threads to use
-            
+
         Returns:
             tuple: (successful, failed) counts
         """
         # Use instance defaults if not specified
         bitrate = bitrate or self.bitrate
         threads = threads if threads is not None else self.threads
-        
+
         # Find all video files
         video_files = self.find_video_files(input_dir)
         if not video_files:
