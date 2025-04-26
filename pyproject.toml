@@ -67,7 +67,7 @@ ensure_newline_before_comments = true
 
 [tool.ruff]
 line-length = 100
-target-version = "1.0.5"
+target-version = "py38"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "B", "UP", "PL", "RUF"]

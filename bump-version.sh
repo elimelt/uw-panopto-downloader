@@ -54,8 +54,8 @@ fi
 
 # Use platform-specific sed command
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    sed -i '' "s/version = \".*\"/version = \"$new_version\"/" "$pyproj_t"
-    sed -i '' "s/__version__ = \".*\"/__version__ = \"$new_version\"/" "$pyinit_t"
+    sed -i '' "^s/version = \".*\"/version = \"$new_version\"/" "$pyproj_t"
+    sed -i '' "^s/__version__ = \".*\"/__version__ = \"$new_version\"/" "$pyinit_t"
 else
     sed -i "s/version = \".*\"/version = \"$new_version\"/" "$pyproj_t"
     sed -i "s/__version__ = \".*\"/__version__ = \"$new_version\"/" "$pyinit_t"
