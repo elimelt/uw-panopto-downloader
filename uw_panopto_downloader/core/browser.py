@@ -59,7 +59,7 @@ class BrowserSession:
             logger.error(f"Error setting up Selenium: {e}")
             return False
 
-    def manual_login(self, url: str) -> bool:
+    def manual_login(self, url: str, console=None) -> bool:
         """Open browser for manual login and wait for user confirmation.
 
         Args:
@@ -70,6 +70,7 @@ class BrowserSession:
         """
         if not self.driver:
             if not self.setup():
+                logger.error("Failed to set up Selenium driver")
                 return False
 
         try:
@@ -77,6 +78,8 @@ class BrowserSession:
             self.driver.get(url)
 
             logger.info("Waiting for manual login...")
+
+            input("Press Enter to continue after logging in...")
 
             # Get the cookies from selenium session after login
             cookies = self.driver.get_cookies()
@@ -141,10 +144,12 @@ class BrowserSession:
             return []
 
         try:
+            logger.info("Extracting video links from current page")
             # Wait for page to fully load
-            WebDriverWait(self.driver, 10).until(
-                ec.presence_of_element_located((By.CSS_SELecTOR, "a.detail-title, .list-item"))
+            WebDriverWait(self.driver, 20).until(
+                ec.presence_of_element_located((By.CSS_SELECTOR, "a.detail-title, .list-item"))
             )
+            logger.info("Page loaded successfully")
 
             # Get current page HTML
             html_content = self.driver.page_source

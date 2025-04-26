@@ -6,7 +6,7 @@ __version__ = "1.0.2"
 def _check_dependencies():
     """Check if all required dependencies are installed."""
     required_packages = [
-        "requests", "beautifulsoup4", "selenium", "webdriver-manager",
+        "requests", "bs4", "selenium", "webdriver_manager.chrome",
         "rich", "typer", "click"
     ]
 
