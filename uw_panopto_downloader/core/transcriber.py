@@ -1,4 +1,8 @@
+import os
 from typing import Optional
+
+from .database import db
+from .storage import storage
 
 
 def _check_whisper_installed():
@@ -59,10 +63,9 @@ def transcribe_directory(
     input_dir: str,
     output_dir: Optional[str] = None,
     model: Optional[str] = "base",
+    store: bool = True,
 ) -> None:
     """Transcribe all audio files in a directory to text with timestamps."""
-    import os
-
     if not os.path.exists(input_dir):
         raise FileNotFoundError(f"Input directory {input_dir} does not exist")
 
@@ -70,32 +73,108 @@ def transcribe_directory(
         os.makedirs(output_dir)
 
     transcriber = Transcriber(model)
-    for filename in os.listdir(input_dir):
-        if filename.endswith(".wav") or filename.endswith(".mp3"):
-            input_path = os.path.join(input_dir, filename)
-            output_path = (
-                os.path.join(output_dir, f"{os.path.splitext(filename)[0]}.txt")
-                if output_dir
-                else None
-            )
-            transcriber.transcribe(input_path, output_path)
+
+    if store:
+        db.connect()
+
+    try:
+        for filename in os.listdir(input_dir):
+            if filename.endswith(".wav") or filename.endswith(".mp3"):
+                input_path = os.path.join(input_dir, filename)
+                output_path = (
+                    os.path.join(output_dir, f"{os.path.splitext(filename)[0]}.txt")
+                    if output_dir
+                    else None
+                )
+
+                transcription = transcriber.transcribe(input_path, output_path)
+                print(f"Transcription saved to {output_path}")
+                print(f"Transcription content:\n{transcription[:100]}...")
+
+                if store and output_path:
+                    title = os.path.splitext(filename)[0]
+
+                    # store transcript
+                    stored_path, transcript_content = storage.store_transcript(output_path, title)
+
+                    if stored_path:
+                        # create symlink back to oginal location
+                        storage.create_symlink(stored_path, output_path)
+
+                        # try to find the video/audio in the database first by title
+                        videos = db.search_videos(title)
+
+                        if videos:
+                            # update existing record
+                            video_id = videos[0]["id"]
+                            db.update_video(video_id, {"transcript_path": stored_path})
+
+                            # transcript for searching
+                            db.add_transcript(video_id, transcript_content)
+                            print(f"Updated database entry for: {title}")
+                        else:
+                            # add new entry if not found
+                            video_id = db.add_video(
+                                title=title,
+                                transcript_path=stored_path
+                            )
+
+                            db.add_transcript(video_id, transcript_content)
+                            print(f"Added to database: {title} (ID: {video_id})")
+    finally:
+        if store:
+            db.close()
 
 
 def transcribe_command(
     input_path: str,
     output_path: Optional[str] = None,
     model: Optional[str] = "base",
+    store: bool = True,
 ) -> None:
     """Transcribe audio files to text with timestamps."""
 
-    import os
-
     if not os.path.exists(input_path):
         raise FileNotFoundError(f"Input file {input_path} does not exist")
-    # check if input_path is a directory
+
     if os.path.isdir(input_path):
-        transcribe_directory(input_path, output_path, model)
+        transcribe_directory(input_path, output_path, model, store)
         return
 
+    if not output_path:
+        output_path = os.path.splitext(input_path)[0] + ".txt"
+
     transcriber = Transcriber(model)
-    transcriber.transcribe(input_path, output_path)
+    transcription = transcriber.transcribe(input_path, output_path)
+    print(f"Transcription saved to {output_path}")
+    print(f"Transcription content:\n{transcription[:100]}...")
+
+    if store:
+        db.connect()
+
+        try:
+            title = os.path.splitext(os.path.basename(input_path))[0]
+
+            stored_path, transcript_content = storage.store_transcript(output_path, title)
+
+            if stored_path:
+                storage.create_symlink(stored_path, output_path)
+
+                videos = db.search_videos(title)
+
+                if videos:
+                    video_id = videos[0]["id"]
+                    db.update_video(video_id, {"transcript_path": stored_path})
+
+                    db.add_transcript(video_id, transcript_content)
+                    print(f"Updated database entry for: {title}")
+                else:
+                    video_id = db.add_video(
+                        title=title,
+                        transcript_path=stored_path
+                    )
+
+                    db.add_transcript(video_id, transcript_content)
+                    print(f"Added to database: {title} (ID: {video_id})")
+        finally:
+            db.close()

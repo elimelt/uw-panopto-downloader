@@ -7,6 +7,7 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import parse_qs, urlparse
 
+from ..utils.file import get_file_size
 from ..utils.logging import get_logger
 from .browser import BrowserSession
 from .config import config
@@ -185,7 +186,9 @@ class PanoptoDownloader:
         logger.error(f"Failed to download after {max_retries} attempts")
         return False
 
-    def download_video(self, video_info: Tuple[str, str], download_dir: str) -> bool:
+    def download_video(
+        self, video_info: Tuple[str, str], download_dir: str
+    ) -> Tuple[bool, str, Optional[str], int]:
         """Download a single video.
 
         Args:
@@ -193,19 +196,19 @@ class PanoptoDownloader:
             download_dir: The directory to save the video to
 
         Returns:
-            bool: Whether download was successful
+            tuple: (success, video_path, video_id, file_size)
         """
         url, title = video_info
         video_id = self.get_video_id(url)
 
         if not video_id:
-            return False
+            return (False, "", None, 0)
 
         stream_url, _ = self.get_delivery_info(video_id)
 
         if not stream_url:
             logger.error(f"Could not get stream URL for {title}")
-            return False
+            return (False, "", video_id, 0)
 
         logger.info(f"Got stream URL for {title}: {stream_url}")
 
@@ -217,14 +220,20 @@ class PanoptoDownloader:
 
         if os.path.exists(output_path):
             logger.info(f"File already exists: {output_path}")
-            return True
+            file_size = get_file_size(output_path) or 0
+            return (True, output_path, video_id, file_size)
 
+        success = False
         if stream_url.endswith(".m3u8"):
-
-            return self.download_m3u8(stream_url, output_path)
+            success = self.download_m3u8(stream_url, output_path)
         else:
+            success = self.download_direct(stream_url, output_path)
 
-            return self.download_direct(stream_url, output_path)
+        file_size = 0
+        if success:
+            file_size = get_file_size(output_path) or 0
+
+        return (success, output_path if success else "", video_id, file_size)
 
     def download_videos(
         self, video_list: List[Tuple[str, str]], download_dir: str
@@ -251,7 +260,7 @@ class PanoptoDownloader:
                 video = future_to_video[future]
                 try:
                     result = future.result()
-                    if result:
+                    if result[0]:  # success flag
                         successful += 1
                     else:
                         failed += 1

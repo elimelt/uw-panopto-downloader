@@ -1,14 +1,17 @@
 """Download command for the CLI interface."""
 
+import os
 import time
-from typing import Optional
+from typing import Optional, Tuple
 
 import typer
 from rich.console import Console
 
 from ..core.browser import BrowserSession
 from ..core.config import config
+from ..core.database import db
 from ..core.downloader import PanoptoDownloader
+from ..core.storage import storage
 from ..utils.file import ensure_directory
 from ..utils.logging import get_logger
 from .utils import (
@@ -29,13 +32,14 @@ console = Console()
 
 def download_command(
     url: Optional[str] = typer.Option(None, "--url", "-u", help="Starting URL for download"),
-    output: str = typer.Option(None, "--output", "-o", help="Output directory"),
+    output: Optional[str] = typer.Option(None, "--output", "-o", help="Output directory"),
     workers: Optional[int] = typer.Option(
         None, "--workers", "-w", help="Number of concurrent downloads"
     ),
     headless: Optional[bool] = typer.Option(
         None, "--headless", help="Run browser in headless mode"
     ),
+    store: bool = True,
 ) -> None:
     """Download videos from UW Panopto."""
 
@@ -59,6 +63,16 @@ def download_command(
     print_info(f"Output directory: {output}")
     print_info(f"Concurrent downloads: {workers}")
 
+    if store:
+        print_info("Database storage: Enabled")
+        if not db.connect():
+            print_warning(
+                "Failed to connect to database. Videos will be downloaded but not indexed."
+            )
+            store = False
+    else:
+        print_info("Database storage: Disabled")
+
     ensure_directory(output)
 
     browser = BrowserSession(headless=headless)
@@ -73,7 +87,7 @@ def download_command(
             print_error("Failed to set up browser session")
             return
 
-        download_loop(browser, downloader, output)
+        download_loop(browser, downloader, output, store)
 
     except KeyboardInterrupt:
         print_warning("\nProcess interrupted by user")
@@ -81,17 +95,22 @@ def download_command(
         logger.error(f"Unexpected error: {e}")
         print_error(f"An error occurred: {e}")
     finally:
+        if store:
+            db.close()
         browser.close()
         print_success("\nBrowser session closed. Goodbye!")
 
 
-def download_loop(browser: BrowserSession, downloader: PanoptoDownloader, output_dir: str) -> None:
+def download_loop( # noqa: PLR0915
+    browser: BrowserSession, downloader: PanoptoDownloader, output_dir: str, store: bool = True
+) -> None:
     """Main download loop for multiple jobs.
 
     Args:
         browser: The browser session
         downloader: The downloader instance
         output_dir: Default output directory
+        store: Whether to store in database
     """
     while True:
 
@@ -134,17 +153,48 @@ def download_loop(browser: BrowserSession, downloader: PanoptoDownloader, output
                 start_time = time.time()
                 successful, failed = 0, 0
 
-                def update_progress(success: bool, task_id) -> None:
-                    nonlocal successful, failed
+                def handle_download_result(result: Tuple[bool, str, Optional[str], int]) -> None:
+                    nonlocal successful, failed, job_output_dir
+                    success, video_path, video_id, file_size = result
+
                     if success:
                         successful += 1
+
+                        if store and video_path:
+                            title = os.path.splitext(os.path.basename(video_path))[0]
+                            job_output_dir = job_output_dir or config.download_dir
+                            if job_output_dir != storage.video_dir:
+                                # store in content directory with symlink
+                                stored_path, stored_size = storage.store_video(video_path, title)
+
+                                if stored_path:
+                                    storage.create_symlink(stored_path, video_path)
+
+                                    db.add_video(
+                                        title=title,
+                                        url=None,
+                                        video_id=video_id,
+                                        video_path=stored_path,
+                                        size=stored_size,
+                                    )
+                            else:
+                                # already in content directory
+                                # just add to db
+                                db.add_video(
+                                    title=title,
+                                    url=None,
+                                    video_id=video_id,
+                                    video_path=video_path,
+                                    size=file_size,
+                                )
                     else:
                         failed += 1
+
                     progress.update(task, completed=successful + failed)  # noqa: B023
 
                 for video_info in video_links:
                     result = downloader.download_video(video_info, job_output_dir)
-                    update_progress(result, task)
+                    handle_download_result(result)
 
             elapsed_time = time.time() - start_time
 

@@ -9,6 +9,8 @@ from rich.console import Console
 
 from ..core.config import config
 from ..core.converter import VideoConverter
+from ..core.database import db
+from ..core.storage import storage
 from ..utils.file import check_ffmpeg_installed, ensure_directory
 from ..utils.logging import get_logger
 from .utils import (
@@ -36,6 +38,7 @@ def convert_command(  # noqa: PLR0915
     threads: Optional[int] = typer.Option(
         None, "--threads", "-t", help="Number of FFmpeg threads (0=auto)"
     ),
+    store: bool = True,
 ) -> None:
     """Convert video files to audio format."""
 
@@ -57,6 +60,16 @@ def convert_command(  # noqa: PLR0915
     print_info(f"Output: {output_path or 'Same as input with .mp3 extension'}")
     print_info(f"Audio bitrate: {bitrate}")
     print_info(f"FFmpeg threads: {threads}")
+
+    if store:
+        print_info("Database storage: Enabled")
+        if not db.connect():
+            print_warning(
+                "Failed to connect to database. Videos will be converted but not indexed."
+            )
+            store = False
+    else:
+        print_info("Database storage: Disabled")
 
     converter = VideoConverter(bitrate=bitrate, threads=threads)
 
@@ -102,6 +115,37 @@ def convert_command(  # noqa: PLR0915
 
                     if result:
                         successful += 1
+
+                        if store:
+                            # get title
+                            video_basename = os.path.basename(video_path)
+                            title = os.path.splitext(video_basename)[0]
+
+                            # store audio file
+                            stored_path = storage.store_audio(file_output, title)
+
+                            if stored_path:
+                                # create symlink to original location
+                                storage.create_symlink(stored_path, file_output)
+
+                                # try to find video in db first by title
+                                if not db.connect():
+                                    continue
+
+                                try:
+                                    videos = db.search_videos(title)
+
+                                    if videos:
+                                        # update existing video
+                                        video_id = videos[0]["id"]
+                                        db.update_video(video_id, {"audio_path": stored_path})
+                                        print_info(f"Updated database entry for: {title}")
+                                    else:
+                                        # add new entry if not found
+                                        video_id = db.add_video(title=title, audio_path=stored_path)
+                                        print_info(f"Added to database: {title} (ID: {video_id})")
+                                finally:
+                                    db.close()
                     else:
                         failed += 1
 
@@ -146,5 +190,34 @@ def convert_command(  # noqa: PLR0915
 
         if result:
             print_success(f"Conversion completed successfully in {elapsed_time:.2f} seconds")
+
+            if store:
+                # get title from filename
+                video_basename = os.path.basename(input_path)
+                title = os.path.splitext(video_basename)[0]
+
+                # store audio file
+                stored_path = storage.store_audio(file_output, title)
+
+                if stored_path:
+                    # create symlink to original location
+                    storage.create_symlink(stored_path, file_output)
+
+                    # try to find video in db first by title
+                    if db.connect():
+                        try:
+                            videos = db.search_videos(title)
+
+                            if videos:
+                                # update existing video
+                                video_id = videos[0]["id"]
+                                db.update_video(video_id, {"audio_path": stored_path})
+                                print_info(f"Updated database entry for: {title}")
+                            else:
+                                # add new entry if not found
+                                video_id = db.add_video(title=title, audio_path=stored_path)
+                                print_info(f"Added to database: {title} (ID: {video_id})")
+                        finally:
+                            db.close()
         else:
             print_error(f"Conversion failed after {elapsed_time:.2f} seconds")

@@ -14,6 +14,7 @@ logger = get_logger(__name__)
 
 MAX_CHUNK_SIZE_MS = 45 * 1000
 
+
 class GCPTranscriber:
     """Class for transcribing audio files using Google Cloud Speech-to-Text with chunking."""
 
@@ -131,8 +132,12 @@ class GCPTranscriber:
             logger.error(f"Error transcribing chunk {chunk_path}: {e}")
             return "", []
 
-    def transcribe( # noqa: PLR0915
-        self, audio_path: str, output_path: Optional[str] = None, language_code: str = "en-US"
+    def transcribe(  # noqa: PLR0915
+        self,
+        audio_path: str,
+        output_path: Optional[str] = None,
+        language_code: str = "en-US",
+        progress_callback: Optional[callable] = None,
     ) -> str:
         """Transcribe audio with word time offsets by splitting into chunks.
 
@@ -140,6 +145,7 @@ class GCPTranscriber:
             audio_path: Path to the audio file
             output_path: Path to save the transcription (optional)
             language_code: Language code for transcription
+            progress_update: Optional callback for progress updates
 
         Returns:
             str: Transcription text (including timestamps)
@@ -194,6 +200,10 @@ class GCPTranscriber:
 
             for i, chunk in enumerate(audio_chunks):
                 logger.info(f"Processing chunk {i+1}/{len(audio_chunks)}")
+                if progress_callback:
+                    percent_complete = (i + 1) / len(audio_chunks) * 100
+                    progress_callback(percent_complete)
+
                 chunk_path = os.path.join(temp_dir, f"chunk_{i}.wav")
 
                 chunk_text, words_with_time = self._transcribe_audio_chunk(

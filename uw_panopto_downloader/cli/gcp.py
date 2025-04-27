@@ -8,7 +8,9 @@ import typer
 from rich.console import Console
 
 from ..core.config import config
+from ..core.database import db
 from ..core.gcp_transcriber import GCPTranscriber
+from ..core.storage import storage
 from ..utils.file import ensure_directory
 from ..utils.logging import get_logger
 from .utils import (
@@ -25,7 +27,7 @@ logger = get_logger(__name__)
 console = Console()
 
 
-def cloud_transcribe_command( # noqa: PLR0915
+def cloud_transcribe_command(  # noqa: PLR0915
     input_path: str = typer.Argument(..., help="Input audio file or directory"),
     output_path: Optional[str] = typer.Option(
         None, "--output", "-o", help="Output file or directory for transcriptions"
@@ -36,6 +38,7 @@ def cloud_transcribe_command( # noqa: PLR0915
     credentials_path: Optional[str] = typer.Option(
         None, "--credentials", "-c", help="Path to GCP credentials JSON file"
     ),
+    store: bool = True,
 ) -> None:
     """Transcribe audio files using Google Cloud Speech-to-Text.
 
@@ -59,6 +62,16 @@ def cloud_transcribe_command( # noqa: PLR0915
     print_info("  - Split into chunks ≤ 45 seconds based on silence detection")
     print_info("  - Transcribed with word time offsets")
 
+    if store:
+        print_info("Database storage: Enabled")
+        if not db.connect():
+            print_warning(
+                "Failed to connect to database. Files will be transcribed but not indexed."
+            )
+            store = False
+    else:
+        print_info("Database storage: Disabled")
+
     if not confirm_action("Proceed with transcription?"):
         print_info("Transcription cancelled")
         return
@@ -70,7 +83,6 @@ def cloud_transcribe_command( # noqa: PLR0915
     if os.path.isdir(input_path):
 
         if not output_path:
-
             output_path = os.path.join(os.path.dirname(input_path), "transcripts")
 
         ensure_directory(output_path)
@@ -99,13 +111,29 @@ def cloud_transcribe_command( # noqa: PLR0915
 
             for i, audio_path in enumerate(audio_files):
                 try:
-
                     rel_path = os.path.relpath(audio_path, input_path)
                     file_output = os.path.join(output_path, os.path.splitext(rel_path)[0] + ".txt")
 
                     ensure_directory(os.path.dirname(file_output))
 
-                    result = transcriber.transcribe(audio_path, file_output, language_code)
+                    chunk_task = progress.add_task(
+                        f"[green]Processing {os.path.basename(audio_path)}...",
+                        total=100,  # We'll use percentage complete
+                        visible=True,
+                    )
+
+                    def update_chunk_progress(percent_complete):
+                        progress.update(chunk_task, completed=percent_complete)
+
+                    result = transcriber.transcribe(
+                        audio_path,
+                        file_output,
+                        language_code,
+                        progress_callback=update_chunk_progress,
+                    )
+
+                    progress.update(chunk_task, visible=False)
+
                     if not result.startswith("ERROR:"):
                         successful.append(audio_path)
                     else:
@@ -151,9 +179,18 @@ def cloud_transcribe_command( # noqa: PLR0915
         )
         print_info("This may take a while for large files as they will be split into chunks...")
 
-        with console.status("[bold blue]Transcribing... (this may take a while)[/bold blue]"):
+        with console.status(
+            "[bold blue]Transcribing... (this may take a while)[/bold blue]"
+        ) as status:
             try:
-                result = transcriber.transcribe(input_path, output_path, language_code)
+                def update_progress(percent_complete):
+                    status.update(
+                        f"[bold blue]Transcribing... {percent_complete:.1f}% complete[/bold blue]"
+                    )
+
+                result = transcriber.transcribe(
+                    input_path, output_path, language_code, progress_callback=update_progress
+                )
                 success = not result.startswith("ERROR:")
             except Exception as e:
                 logger.error(f"Error transcribing {input_path}: {e}")
@@ -164,5 +201,31 @@ def cloud_transcribe_command( # noqa: PLR0915
         if success:
             print_success(f"Transcription completed successfully in {elapsed_time:.2f} seconds")
             print_info(f"Transcription saved to: {output_path}")
+
+            if store:
+                title = os.path.splitext(os.path.basename(input_path))[0]
+
+                stored_path, transcript_content = storage.store_transcript(output_path, title)
+
+                if stored_path:
+                    storage.create_symlink(stored_path, output_path)
+
+                    if db.connect():
+                        try:
+                            videos = db.search_videos(title)
+
+                            if videos:
+                                video_id = videos[0]["id"]
+                                db.update_video(video_id, {"transcript_path": stored_path})
+
+                                db.add_transcript(video_id, transcript_content)
+                                print_info(f"Updated database entry for: {title}")
+                            else:
+                                video_id = db.add_video(title=title, transcript_path=stored_path)
+
+                                db.add_transcript(video_id, transcript_content)
+                                print_info(f"Added to database: {title} (ID: {video_id})")
+                        finally:
+                            db.close()
         else:
             print_error(f"Transcription failed after {elapsed_time:.2f} seconds")
