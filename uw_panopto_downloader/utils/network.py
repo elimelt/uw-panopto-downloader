@@ -26,7 +26,6 @@ def create_session(retries: int = 3, backoff_factor: float = 0.3) -> requests.Se
     """
     session = requests.Session()
 
-    # Configure automatic retries with exponential backoff
     retry_strategy = Retry(
         total=retries,
         backoff_factor=backoff_factor,
@@ -60,22 +59,19 @@ def download_file(
     Returns:
         tuple: (success, error_message)
     """
-    # Create directory if it doesn't exist
+
     os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
 
-    # Use provided session or create a new one
     if session is None:
         session = create_session()
 
     try:
-        # Start the request
+
         response = session.get(url, stream=True, timeout=timeout)
         response.raise_for_status()
 
-        # Get file size if available
         total_size = int(response.headers.get("content-length", 0))
 
-        # Download the file
         with open(output_path, "wb") as f:
             start_time = time.time()
             downloaded = 0
@@ -85,7 +81,6 @@ def download_file(
                     f.write(chunk)
                     downloaded += len(chunk)
 
-                    # Calculate progress and speed
                     elapsed = time.time() - start_time
                     if elapsed > 0:
                         speed = downloaded / elapsed

@@ -26,7 +26,7 @@ class Config:
     def _load(self) -> None:
         """Load configuration from file."""
         if not self.config_file.exists():
-            self._save()  # Create default config
+            self._save()
             return
 
         try:
@@ -35,7 +35,6 @@ class Config:
                 self.settings.update(loaded_config)
         except (OSError, json.JSONDecodeError) as e:
             print(f"Warning: Failed to load config file: {e}")
-            # Continue with defaults
 
     def _save(self) -> None:
         """Save configuration to file."""
@@ -116,5 +115,4 @@ class Config:
         self._save()
 
 
-# Global config instance
 config = Config()

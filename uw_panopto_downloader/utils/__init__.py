@@ -21,5 +21,5 @@ __all__ = [
     "get_available_space",
     "get_file_size",
     "get_logger",
-    "parse_url"
+    "parse_url",
 ]

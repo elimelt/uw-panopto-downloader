@@ -9,9 +9,9 @@ from rich.console import Console
 from ..core.config import config
 from .convert import convert_command
 from .download import download_command
+from .gcp import cloud_transcribe_command
 from .utils import check_dependencies, print_header, print_info, print_warning
 
-# Create Typer app
 app = typer.Typer(
     name="uwpd",
     help="Download and convert videos from UW Panopto",
@@ -24,7 +24,7 @@ console = Console()
 @app.callback()
 def callback() -> None:
     """UW Panopto Downloader - A tool for downloading and converting Panopto videos."""
-    # This is run before any command
+
     check_dependencies()
 
 
@@ -59,18 +59,20 @@ def convert(
     """Convert video files to audio format."""
     convert_command(input_path, output_path, bitrate, threads)
 
+
 @app.command("transcribe", help="Transcribe audio files to text")
 def transcribe(
     input_path: str = typer.Argument(..., help="Input audio file"),
     output_path: Optional[str] = typer.Option(
-        'transcript.txt', "--output", "-o", help="Output text file"
+        "transcript.txt", "--output", "-o", help="Output text file"
     ),
     model: Optional[str] = typer.Option(
-        'turbo', "--model", "-m", help="Whisper model name (e.g. tiny, base, small, medium, large)"
+        "turbo", "--model", "-m", help="Whisper model name (e.g. tiny, base, small, medium, large)"
     ),
 ) -> None:
     """Transcribe audio files to text."""
     from ..core.transcriber import transcribe_command
+
     transcribe_command(input_path, output_path, model)
 
 
@@ -94,7 +96,7 @@ def config_command(
     show: bool = typer.Option(False, "--show", help="Show current configuration"),
 ) -> None:
     """View or update configuration."""
-    # Update config if options are provided
+
     if download_dir is not None:
         config.download_dir = download_dir
     if max_workers is not None:
@@ -106,7 +108,6 @@ def config_command(
     if ffmpeg_threads is not None:
         config.ffmpeg_threads = ffmpeg_threads
 
-    # Show current configuration
     if show or all(
         param is None
         for param in [download_dir, max_workers, headless, audio_bitrate, ffmpeg_threads]
@@ -118,8 +119,24 @@ def config_command(
         print_info(f"Audio bitrate: {config.audio_bitrate}")
         print_info(f"FFmpeg threads: {config.ffmpeg_threads}")
 
-        # Show config file location
         print_info(f"Config file: {config.config_file}")
+
+
+@app.command("cloud-transcribe", help="Transcribe audio files using Google Cloud Speech-to-Text")
+def cloud_transcribe(
+    input_path: str = typer.Argument(..., help="Input audio file or directory"),
+    output_path: Optional[str] = typer.Option(
+        None, "--output", "-o", help="Output file or directory for transcriptions"
+    ),
+    language_code: str = typer.Option(
+        "en-US", "--language", "-l", help="Language code (e.g., en-US, fr-FR)"
+    ),
+    credentials_path: Optional[str] = typer.Option(
+        None, "--credentials", "-c", help="Path to GCP credentials JSON file"
+    ),
+) -> None:
+    """Transcribe audio files using Google Cloud Speech-to-Text."""
+    cloud_transcribe_command(input_path, output_path, language_code, credentials_path)
 
 
 @app.command("version")

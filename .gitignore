@@ -177,3 +177,5 @@ cython_debug/
 downloads
 371
 data
+
+gcp-creds.json

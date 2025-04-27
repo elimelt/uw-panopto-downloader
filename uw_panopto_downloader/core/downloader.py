@@ -39,7 +39,6 @@ class PanoptoDownloader:
         parsed_url = urlparse(url)
         query_params = parse_qs(parsed_url.query)
 
-        # The ID parameter can be either 'id' or 'Id'
         video_id = query_params.get("id", [None])[0] or query_params.get("Id", [None])[0]
 
         if not video_id:
@@ -78,12 +77,11 @@ class PanoptoDownloader:
             stream_url = data.get("Delivery", {}).get("PodcastStreams", [{}])[0].get("StreamUrl")
             additional_streams = data.get("Delivery", {}).get("Streams", [])
 
-            # Filter out the main stream from additional streams
             additional_streams = [s for s in additional_streams if s.get("StreamUrl") != stream_url]
 
             if not stream_url:
                 logger.error("Stream URL not found in delivery info")
-                # Try to get any available stream
+
                 for stream in additional_streams:
                     if stream.get("StreamUrl"):
                         stream_url = stream.get("StreamUrl")
@@ -106,7 +104,7 @@ class PanoptoDownloader:
             bool: Whether download was successful
         """
         try:
-            # Check if FFmpeg is installed
+
             try:
                 subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
             except (subprocess.SubprocessError, FileNotFoundError):
@@ -115,7 +113,6 @@ class PanoptoDownloader:
                 )
                 return False
 
-            # Download with FFmpeg
             cmd = [
                 "ffmpeg",
                 "-i",
@@ -204,7 +201,6 @@ class PanoptoDownloader:
         if not video_id:
             return False
 
-        # Get the stream URL
         stream_url, _ = self.get_delivery_info(video_id)
 
         if not stream_url:
@@ -213,26 +209,21 @@ class PanoptoDownloader:
 
         logger.info(f"Got stream URL for {title}: {stream_url}")
 
-        # Determine file extension based on URL
-        file_ext = ".mp4"  # Default extension
+        file_ext = ".mp4"
 
-        # Create output directory if it doesn't exist
         os.makedirs(download_dir, exist_ok=True)
 
-        # Create output path
         output_path = os.path.join(download_dir, f"{title}{file_ext}")
 
-        # Check if file already exists
         if os.path.exists(output_path):
             logger.info(f"File already exists: {output_path}")
             return True
 
-        # Download based on stream type
         if stream_url.endswith(".m3u8"):
-            # HLS stream
+
             return self.download_m3u8(stream_url, output_path)
         else:
-            # Direct video URL
+
             return self.download_direct(stream_url, output_path)
 
     def download_videos(

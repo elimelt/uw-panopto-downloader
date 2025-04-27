@@ -18,10 +18,10 @@ def clean_filename(filename: str) -> str:
     Returns:
         str: The cleaned filename
     """
-    # Replace invalid characters with underscore
-    cleaned = re.sub(r'[\\/*?:"<>|]', '_', filename)
-    # Remove extra whitespace
-    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+    cleaned = re.sub(r'[\\/*?:"<>|]', "_", filename)
+
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
     return cleaned
 
 
@@ -49,8 +49,9 @@ def check_ffmpeg_installed() -> bool:
         bool: Whether FFmpeg is installed
     """
     import subprocess
+
     try:
-        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
         return True
     except (subprocess.SubprocessError, FileNotFoundError):
         return False
@@ -66,11 +67,13 @@ def get_available_space(directory: str) -> Optional[int]:
         int: Available space in bytes, or None if error
     """
     try:
-        if os.name == 'nt':  # Windows
+        if os.name == "nt":  # Windows
             import ctypes
+
             free_bytes = ctypes.c_ulonglong(0)
             ctypes.windll.kernel32.GetDiskFreeSpaceExW(
-                ctypes.c_wchar_p(directory), None, None, ctypes.pointer(free_bytes))
+                ctypes.c_wchar_p(directory), None, None, ctypes.pointer(free_bytes)
+            )
             return free_bytes.value
         else:  # Unix/Linux/macOS
             stats = os.statvfs(directory)

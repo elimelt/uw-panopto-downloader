@@ -2,12 +2,17 @@
 
 __version__ = "1.0.11"
 
-# Check for required dependencies
+
 def _check_dependencies():
     """Check if all required dependencies are installed."""
     required_packages = [
-        "requests", "bs4", "selenium", "webdriver_manager.chrome",
-        "rich", "typer", "click"
+        "requests",
+        "bs4",
+        "selenium",
+        "webdriver_manager.chrome",
+        "rich",
+        "typer",
+        "click",
     ]
 
     missing = []
@@ -22,5 +27,5 @@ def _check_dependencies():
         print(f"Warning: Missing required dependencies: {', '.join(missing)}")
         print("Please install them using: pip install " + " ".join(missing))
 
-# Run dependency check
+
 _check_dependencies()

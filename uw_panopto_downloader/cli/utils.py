@@ -130,7 +130,6 @@ def check_dependencies() -> bool:
     """
     all_ok = True
 
-    # Check for FFmpeg
     if not check_ffmpeg_installed():
         print_warning(
             "FFmpeg is not installed. Video downloads and conversions may not work correctly."

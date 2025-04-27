@@ -56,51 +56,45 @@ class VideoConverter:
         Returns:
             bool: Whether conversion was successful
         """
-        # Use instance defaults if not specified
+
         bitrate = bitrate or self.bitrate
         threads = threads if threads is not None else self.threads
 
-        # Generate output path if not provided
         if not output_path:
             output_path = os.path.splitext(video_path)[0] + ".mp3"
 
-        # Skip if output file already exists
         if os.path.exists(output_path):
             logger.info(f"Skipping existing file: {output_path}")
             return True
 
-        # Create output directory if it doesn't exist
         output_dir = os.path.dirname(output_path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir, exist_ok=True)
 
-        # Set thread count
         if threads <= 0:
             threads = multiprocessing.cpu_count()
 
-        # Check if FFmpeg is installed
         try:
             subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
         except (subprocess.SubprocessError, FileNotFoundError):
             logger.error("FFmpeg is not installed. Please install FFmpeg for audio conversion.")
             return False
 
-        # Run FFmpeg command
         cmd = [
             "ffmpeg",
             "-i",
             video_path,
             "-threads",
             str(threads),
-            "-vn",  # No video
+            "-vn",
             "-b:a",
-            bitrate,  # Audio bitrate
+            bitrate,
             "-c:a",
-            "libmp3lame",  # MP3 codec
+            "libmp3lame",
             "-map_metadata",
-            "0",  # Copy metadata
-            "-stats",  # Show progress
-            "-y",  # Overwrite output
+            "0",
+            "-stats",
+            "-y",
             output_path,
         ]
 
@@ -134,11 +128,10 @@ class VideoConverter:
         Returns:
             tuple: (successful, failed) counts
         """
-        # Use instance defaults if not specified
+
         bitrate = bitrate or self.bitrate
         threads = threads if threads is not None else self.threads
 
-        # Find all video files
         video_files = self.find_video_files(input_dir)
         if not video_files:
             logger.info(f"No video files found in {input_dir}")
@@ -146,20 +139,18 @@ class VideoConverter:
 
         logger.info(f"Found {len(video_files)} video files to convert")
 
-        # Process each file
         successful = 0
         failed = 0
 
         for i, video_path in enumerate(video_files, 1):
             try:
-                # Determine output path
+
                 if output_dir:
                     rel_path = os.path.relpath(video_path, input_dir)
                     output_path = os.path.join(output_dir, os.path.splitext(rel_path)[0] + ".mp3")
                 else:
                     output_path = os.path.splitext(video_path)[0] + ".mp3"
 
-                # Convert the file
                 logger.info(f"Processing {i}/{len(video_files)}: {os.path.basename(video_path)}")
                 if self.convert_file(video_path, output_path, bitrate, threads):
                     successful += 1

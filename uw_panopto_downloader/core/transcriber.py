@@ -54,6 +54,7 @@ class Transcriber:
 
         return transcription
 
+
 def transcribe_directory(
     input_dir: str,
     output_dir: Optional[str] = None,
@@ -78,6 +79,7 @@ def transcribe_directory(
                 else None
             )
             transcriber.transcribe(input_path, output_path)
+
 
 def transcribe_command(
     input_path: str,

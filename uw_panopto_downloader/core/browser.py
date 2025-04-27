@@ -48,11 +48,9 @@ class BrowserSession:
         chrome_options.add_argument("--no-sandbox")
         chrome_options.add_argument("--disable-dev-shm-usage")
 
-        # Install and setup Chrome driver
         try:
             self.driver = webdriver.Chrome(
-                service=Service(ChromeDriverManager().install()),
-                options=chrome_options
+                service=Service(ChromeDriverManager().install()), options=chrome_options
             )
             return True
         except Exception as e:
@@ -81,12 +79,10 @@ class BrowserSession:
 
             input("Press Enter to continue after logging in...")
 
-            # Get the cookies from selenium session after login
             cookies = self.driver.get_cookies()
             for cookie in cookies:
-                self.session.cookies.set(cookie['name'], cookie['value'])
+                self.session.cookies.set(cookie["name"], cookie["value"])
 
-            # Get current URL to use as base for API calls
             current_url = self.driver.current_url
             self.base_url = self._get_base_url(current_url)
 
@@ -112,10 +108,8 @@ class BrowserSession:
             logger.info(f"Navigating to {url}")
             self.driver.get(url)
 
-            # Wait for page to load
             time.sleep(2)
 
-            # Update base URL if domain has changed
             current_url = self.driver.current_url
             new_base_url = self._get_base_url(current_url)
 
@@ -123,10 +117,9 @@ class BrowserSession:
                 logger.info(f"Base URL changed from {self.base_url} to {new_base_url}")
                 self.base_url = new_base_url
 
-                # Update session cookies
                 cookies = self.driver.get_cookies()
                 for cookie in cookies:
-                    self.session.cookies.set(cookie['name'], cookie['value'])
+                    self.session.cookies.set(cookie["name"], cookie["value"])
 
             return True
         except Exception as e:
@@ -145,43 +138,41 @@ class BrowserSession:
 
         try:
             logger.info("Extracting video links from current page")
-            # Wait for page to fully load
+
             WebDriverWait(self.driver, 20).until(
                 ec.presence_of_element_located((By.CSS_SELECTOR, "a.detail-title, .list-item"))
             )
             logger.info("Page loaded successfully")
 
-            # Get current page HTML
             html_content = self.driver.page_source
-            soup = BeautifulSoup(html_content, 'html.parser')
+            soup = BeautifulSoup(html_content, "html.parser")
 
             links = []
-            # Try different selectors that might be present in Panopto pages
-            detail_titles = soup.find_all('a', class_='detail-title')
+
+            detail_titles = soup.find_all("a", class_="detail-title")
 
             if detail_titles:
                 for a in detail_titles:
-                    link = a.get('href')
-                    # Try to get title from aria-label first, then from text content
-                    title = a.get('aria-label') or a.text.strip()
+                    link = a.get("href")
+
+                    title = a.get("aria-label") or a.text.strip()
 
                     if link and title:
-                        # Clean the title for use as filename
+
                         title = self._clean_filename(title)
 
-                        # Make sure the link is absolute
-                        if not link.startswith('http'):
+                        if not link.startswith("http"):
                             link = f"{self.base_url}{link}"
 
                         links.append((link, title))
             else:
-                # Alternative approach if the first selector doesn't work
-                items = soup.select('.list-item')
+
+                items = soup.select(".list-item")
                 for item in items:
-                    a_tag = item.select_one('a')
+                    a_tag = item.select_one("a")
                     if a_tag:
-                        link = a_tag.get('href')
-                        title_elem = item.select_one('.title-text')
+                        link = a_tag.get("href")
+                        title_elem = item.select_one(".title-text")
                         if title_elem:
                             title = title_elem.text.strip()
                         else:
@@ -190,8 +181,7 @@ class BrowserSession:
                         if link and title:
                             title = self._clean_filename(title)
 
-                            # Make sure the link is absolute
-                            if not link.startswith('http'):
+                            if not link.startswith("http"):
                                 link = f"{self.base_url}{link}"
 
                             links.append((link, title))
@@ -232,8 +222,8 @@ class BrowserSession:
             str: The cleaned filename
         """
         import re
-        # Replace invalid characters with underscore
-        cleaned = re.sub(r'[\\/*?:"<>|]', '_', filename)
-        # Remove extra whitespace
-        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+
+        cleaned = re.sub(r'[\\/*?:"<>|]', "_", filename)
+
+        cleaned = re.sub(r"\s+", " ", cleaned).strip()
         return cleaned
