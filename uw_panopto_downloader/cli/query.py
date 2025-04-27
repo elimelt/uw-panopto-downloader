@@ -131,6 +131,9 @@ def search_videos_command(
         table.add_column("Video", style="yellow", justify="center")
         table.add_column("Audio", style="yellow", justify="center")
         table.add_column("Transcript", style="yellow", justify="center")
+        table.add_column(
+            "Remote URL", style="purple", justify="center", overflow="fold", no_wrap=False
+        )
 
         for video in videos:
             row = [
@@ -138,9 +141,10 @@ def search_videos_command(
                 video["title"],
                 format_date(video["date_added"]),
                 format_size(video["size"] or 0),
-                "✓" if video["video_path"] else "",
-                "✓" if video["audio_path"] else "",
-                "✓" if video["transcript_path"] else "",
+                "✓" if video.get("video_path") else "",
+                "✓" if video.get("audio_path") else "",
+                "✓" if video.get("transcript_path") else "",
+                video.get("url", ""),
             ]
             table.add_row(*row)
 
@@ -372,7 +376,7 @@ def stats_command() -> None:
         db.close()
 
 
-def migrate_command( # noqa: PLR0915
+def migrate_command(  # noqa: PLR0915
     video_dir: str = typer.Argument(..., help="Video directory to migrate"),
     audio_dir: Optional[str] = typer.Option(
         None, "--audio", "-a", help="Audio directory to migrate"

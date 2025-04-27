@@ -101,7 +101,7 @@ def download_command(
         print_success("\nBrowser session closed. Goodbye!")
 
 
-def download_loop( # noqa: PLR0915
+def download_loop(  # noqa: PLR0915
     browser: BrowserSession, downloader: PanoptoDownloader, output_dir: str, store: bool = True
 ) -> None:
     """Main download loop for multiple jobs.
@@ -153,7 +153,9 @@ def download_loop( # noqa: PLR0915
                 start_time = time.time()
                 successful, failed = 0, 0
 
-                def handle_download_result(result: Tuple[bool, str, Optional[str], int]) -> None:
+                def handle_download_result(
+                    url, result: Tuple[bool, str, Optional[str], int]
+                ) -> None:
                     nonlocal successful, failed, job_output_dir
                     success, video_path, video_id, file_size = result
 
@@ -172,7 +174,7 @@ def download_loop( # noqa: PLR0915
 
                                     db.add_video(
                                         title=title,
-                                        url=None,
+                                        url=url,
                                         video_id=video_id,
                                         video_path=stored_path,
                                         size=stored_size,
@@ -182,7 +184,7 @@ def download_loop( # noqa: PLR0915
                                 # just add to db
                                 db.add_video(
                                     title=title,
-                                    url=None,
+                                    url=url,
                                     video_id=video_id,
                                     video_path=video_path,
                                     size=file_size,
@@ -194,7 +196,7 @@ def download_loop( # noqa: PLR0915
 
                 for video_info in video_links:
                     result = downloader.download_video(video_info, job_output_dir)
-                    handle_download_result(result)
+                    handle_download_result(video_info[0], result)
 
             elapsed_time = time.time() - start_time
 
