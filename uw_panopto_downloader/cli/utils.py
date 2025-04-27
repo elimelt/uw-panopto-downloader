@@ -14,6 +14,16 @@ from ..utils.logging import get_logger
 logger = get_logger(__name__)
 console = Console()
 
+def format_link(url: str, show: str) -> str:
+    """Format a URL as a clickable link.
+
+    Args:
+        url: The URL to format
+        show: The text to display
+    Returns:
+        str: Formatted URL
+    """
+    return f"[link={url}]{show}[/link]"
 
 def print_header(text: str) -> None:
     """Print a styled header.

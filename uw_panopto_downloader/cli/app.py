@@ -195,9 +195,12 @@ def search_videos(
     query: str = typer.Argument(..., help="Search query"),
     transcript: bool = typer.Option(False, "--transcript", "-t", help="Search in transcripts"),
     limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results to show"),
+    context_lines: int = typer.Option(
+        1, "--context", "-c", help="Number of context lines to show for each result"
+    ),
 ):
     """Search videos in the database."""
-    search_videos_command(query, transcript, limit)
+    search_videos_command(query, transcript, limit, context_lines)
 
 
 @db_app.command("info", help="Display detailed information about a video")

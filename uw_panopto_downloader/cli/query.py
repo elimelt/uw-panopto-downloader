@@ -1,6 +1,8 @@
 """Query command for the CLI interface."""
 
 import os
+import re
+from datetime import datetime
 from typing import Optional
 
 import typer
@@ -8,10 +10,12 @@ from rich.console import Console
 from rich.table import Table
 
 from ..core.database import db
+from ..core.storage import storage
 from ..utils.file import format_size
 from ..utils.logging import get_logger
 from .utils import (
     confirm_action,
+    format_link,
     print_error,
     print_header,
     print_info,
@@ -32,7 +36,6 @@ def format_date(timestamp: int) -> str:
     Returns:
         str: Formatted date string
     """
-    from datetime import datetime
 
     return datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M")
 
@@ -99,12 +102,15 @@ def list_videos_command(
         db.close()
 
 
-def search_videos_command(
+def search_videos_command( # noqa: PLR0915
     query: str = typer.Argument(..., help="Search query"),
-    transcript: bool = typer.Option(False, "--transcript", "-t", help="Search in transcripts"),
+    transcript: bool = typer.Option(True, "--transcript", "-t", help="Search in transcripts"),
     limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results to show"),
+    context_lines: int = typer.Option(
+        1, "--context", "-c", help="Number of context lines to show around matches"
+    ),
 ) -> None:
-    """Search videos in the database."""
+    """Search videos in the database with transcript snippets."""
     print_header(f"Search Results: {query}")
 
     if not db.connect():
@@ -112,43 +118,156 @@ def search_videos_command(
         return
 
     try:
+        results = []
         if transcript:
-            videos = db.search_transcripts(query, limit=limit)
-            search_type = "transcripts"
-        else:
-            videos = db.search_videos(query, limit=limit)
-            search_type = "metadata"
+            # Search in transcripts and collect matches with context
+            search_results = db.search_transcripts(query, limit=limit)
 
-        if not videos:
-            print_info(f"No videos found matching '{query}' in {search_type}.")
+            for video in search_results:
+                # Load the transcript content
+                if video.get("transcript_path") and os.path.exists(video.get("transcript_path")):
+                    with open(video.get("transcript_path"), encoding="utf-8") as f:
+                        transcript_text = f.read()
+
+                    # find matches in transcript
+                    matches = []
+                    lines = transcript_text.split("\n")
+
+                    for i, line in enumerate(lines):
+                        if query.lower() in line.lower():
+                            # extract timestamp if available
+
+                            timestamp_match = re.search(r"\[(\d+\.\d+)\s*-\s*\d+\.\d+\]", line)
+                            seconds = 0
+                            timestamp_text = ""
+
+                            if timestamp_match:
+                                timestamp_text = timestamp_match.group(0)
+                                try:
+                                    seconds = float(timestamp_match.group(1))
+                                except (ValueError, IndexError):
+                                    pass
+
+                            # get context lines
+                            start_idx = max(0, i - context_lines)
+                            end_idx = min(len(lines), i + context_lines + 1)
+                            context = lines[start_idx:end_idx]
+
+                            # create URL with timestamp
+                            direct_url = ""
+                            if video.get("url") and seconds > 0:
+                                # format URL with timestamp for Panopto
+                                video_url = video.get("url", "")
+                                if "panopto.com" in video_url or "hosted.panopto" in video_url:
+                                    direct_url = f"{video_url}&start={seconds}"
+                                else:
+                                    direct_url = f"{video_url}?t={int(seconds)}"
+
+                            matches.append(
+                                {
+                                    "timestamp_text": timestamp_text,
+                                    "seconds": seconds,
+                                    "context": context,
+                                    "line_number": i,
+                                    "direct_url": direct_url,
+                                    "line": line.replace(timestamp_text, "").strip(),
+                                }
+                            )
+
+                    # add matches to result
+                    video["matches"] = matches
+
+                    if matches:
+                        results.append(video)
+        else:
+            results = db.search_videos(query, limit=limit)
+
+        if not results:
+            print_info(f"No videos found matching '{query}'.")
             return
 
-        table = Table(title=f"Search Results: {len(videos)} videos found")
-        table.add_column("ID", style="cyan", no_wrap=True)
+        table = Table(title=f"Search Results: {len(results)} videos found", show_lines=True)
+        table.add_column("ID", style="cyan")
         table.add_column("Title", style="green")
-        table.add_column("Added", style="blue")
-        table.add_column("Size", style="magenta", justify="right")
-        table.add_column("Video", style="yellow", justify="center")
-        table.add_column("Audio", style="yellow", justify="center")
-        table.add_column("Transcript", style="yellow", justify="center")
-        table.add_column(
-            "Remote URL", style="purple", justify="center", overflow="fold", no_wrap=False
-        )
+        table.add_column("Match", style="yellow", overflow="fold")
+        table.add_column("Direct Link", style="blue", overflow="fold")
 
-        for video in videos:
-            row = [
-                str(video["id"]),
-                video["title"],
-                format_date(video["date_added"]),
-                format_size(video["size"] or 0),
-                "✓" if video.get("video_path") else "",
-                "✓" if video.get("audio_path") else "",
-                "✓" if video.get("transcript_path") else "",
-                video.get("url", ""),
-            ]
-            table.add_row(*row)
+        for video in results:
+            if transcript and video.get("matches"):
+                for match in video["matches"][:20]:
+                    # format snippet
+                    snippet = match["line"]
+
+                    row = [
+                        str(video["id"]),
+                        video["title"],
+                        f"{match['timestamp_text']} {snippet}",
+                        (
+                            format_link(match["direct_url"], match["timestamp_text"])
+                            if match["direct_url"]
+                            else "N/A"
+                        ),
+                    ]
+                    table.add_row(*row)
+
+                if len(video["matches"]) > 3:
+                    table.add_row(
+                        str(video["id"]),
+                        video["title"],
+                        f"...and {len(video['matches']) - 3} more matches",
+                        "",
+                    )
+            else:
+                # metadata only result
+                row = [
+                    str(video["id"]),
+                    video["title"],
+                    "Matched in metadata",
+                    video.get("url", "N/A"),
+                ]
+                table.add_row(*row)
 
         console.print(table)
+
+        # detailed results for transcript matches
+        if transcript:
+            for video in results:
+                if video.get("matches"):
+                    console.print()
+                    console.print(
+                        f"[bold cyan]Video ID {video['id']}:[/] [green]{video['title']}[/]"
+                    )
+
+                    for i, match in enumerate(video["matches"]):
+                        if i >= 5:
+                            console.print(
+                                f"[italic]...and {len(video['matches']) - 5} more matches[/italic]"
+                            )
+                            break
+
+                        console.print()
+                        if match["direct_url"]:
+                            console.print(
+                                f"[bold]{match['timestamp_text']}[/] [link={match['direct_url']}]"
+                                "View...[/link]"
+                            )
+                        else:
+                            console.print(f"[bold]{match['timestamp_text']}[/]")
+
+                        for line in match["context"]:
+                            if query.lower() in line.lower():
+                                # highlight match
+                                start = line.lower().find(query.lower())
+                                end = start + len(query)
+
+                                highlighted = (
+                                    line[:start]
+                                    + f"[bold red]{line[start:end]}[/bold red]"
+                                    + line[end:]
+                                )
+                                console.print(highlighted)
+                            else:
+                                console.print(line)
 
     finally:
         db.close()
@@ -304,7 +423,6 @@ def delete_video_command(
             return
 
         if files:
-            from ..core.storage import storage
 
             # delete associated files
             if video["video_path"]:
@@ -386,7 +504,6 @@ def migrate_command(  # noqa: PLR0915
     ),
 ) -> None:
     """Migrate existing files to the database."""
-    from ..core.storage import storage
 
     print_header("Migrating Files to Database")
 
