@@ -93,7 +93,7 @@ class Database:
         """
         )
 
-        # Create full-text search index for transcripts
+        # full-text search index for transcripts
         self.cursor.execute(
             """
         CREATE VIRTUAL TABLE IF NOT EXISTS transcript_search USING fts5(
@@ -190,7 +190,7 @@ class Database:
             "notes",
         }
 
-        # Filter out invalid fields
+        # filter invalid fields
         valid_updates = {k: v for k, v in updates.items() if k in valid_fields}
 
         if not valid_updates:

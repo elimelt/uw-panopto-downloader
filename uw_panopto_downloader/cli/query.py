@@ -89,7 +89,7 @@ def list_videos_command(
 
         console.print(table)
 
-        # Show pagination info if not showing all
+        # show pagination if not showing all
         if not all_videos:
             stats = db.get_stats()
             total = stats.get("total_videos", 0)
@@ -120,11 +120,9 @@ def search_videos_command( # noqa: PLR0915
     try:
         results = []
         if transcript:
-            # Search in transcripts and collect matches with context
             search_results = db.search_transcripts(query, limit=limit)
 
             for video in search_results:
-                # Load the transcript content
                 if video.get("transcript_path") and os.path.exists(video.get("transcript_path")):
                     with open(video.get("transcript_path"), encoding="utf-8") as f:
                         transcript_text = f.read()

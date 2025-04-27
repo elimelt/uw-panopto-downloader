@@ -1,136 +1,179 @@
 # UW Panopto Downloader
 
-A Python tool for downloading videos from UW Panopto and optionally converting them to audio format.
+A Python library and CLI tool for downloading and processing videos from University of Washington's Panopto. Use at your own risk!
 
-## Features
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/downloads/)
 
-- Interactive browser-based login to access your Panopto content
-- Extract video links from Panopto course pages
-- Concurrent downloading of multiple videos
-- Video to audio conversion (MP4 to MP3)
-- User-friendly command line interface with rich formatting
-- Configurable settings saved between sessions
+## Overview
+
+Tired of taking classes and forgetting everything the next quarter? Tired of having to rewatch the same lecture over and over again only for a few key points? Scared of graduating and losing access to all this institutional knowledge? UW Panopto Downloader might be just what you're looking for!
+
+### Key Features
+
+- **Video Downloads**: Log in to Panopto and batch download videos from course pages
+- **Audio Conversion**: Convert videos to audio format for efficient storage and mobile listening
+- **Transcription**: Generate accurate transcripts with timestamps either locally using OpenAI's Whisper or Google Cloud Speech-to-Text
+- **Metadata Management**: Organize videos with tags, notes, and searchable transcripts
+- **Store Locally**: Keep all your videos, audio, and transcripts in a structured format on your local machine with a SQLite database for metadata indexing
 
 ## Installation
 
 ```bash
-# From PyPI
 pip install uw-panopto-downloader
-
-# From source
-git clone https://github.com/elimelt/uw-panopto-downloader.git
-cd uw-panopto-downloader
-pip install -e .
 ```
 
-## Requirements
+### Requirements
 
-- Python 3.11 or higher
-- FFmpeg (for video downloads and conversion)
-- Chrome or Chromium browser (for Selenium)
+- Python 3.12 (exactly 3.12 if you want any hope of using the Whisper model)
+- FFmpeg installed on your system
+- Google Cloud credentials (for transcription features)
 
-## Usage
+## Quick Start
 
-### Command Line Interface
-
-The package provides a command-line tool `uwpd` with several subcommands:
+### Downloading Videos
 
 ```bash
-# Show help
-uwpd --help
-
-# Download videos
-uwpd download [OPTIONS]
-
-# Convert videos to audio
-uwpd convert [INPUT] [OPTIONS]
-
-# View or update configuration
-uwpd config [OPTIONS]
-
-# Show version
-uwpd version
+uwpd download --url "https://uw.hosted.panopto.com/Panopto/Pages/Sessions/List.aspx#folderID=..."
 ```
 
-### Download Command
+### Converting Videos to Audio
 
 ```bash
-# Start an interactive download session
-uwpd download
-
-# Specify a starting URL
-uwpd download --url "https://panopto.uw.edu/your-course-page"
-
-# Set output directory
-uwpd download --output "path/to/downloads"
-
-# Set number of concurrent downloads
-uwpd download --workers 5
-
-# Run in headless mode (no browser window)
-uwpd download --headless
+uwpd convert path/to/videos
 ```
 
-### Convert Command
+### Transcribing Audio with Google Cloud
 
 ```bash
-# Convert a single video
-uwpd convert video.mp4
-
-# Convert with output path
-uwpd convert video.mp4 --output audio.mp3
-
-# Convert a directory of videos
-uwpd convert videos_dir/ --output audio_dir/
-
-# Set audio bitrate
-uwpd convert video.mp4 --bitrate 320k
-
-# Set number of FFmpeg threads
-uwpd convert video.mp4 --threads 4
+uwpd cloud-transcribe path/to/audio.mp3 --language en-US
 ```
 
-### Config Command
+### Transcribing Audio with Local Whisper Model
 
 ```bash
-# Show current configuration
-uwpd config --show
-
-# Update configuration
-uwpd config --download-dir "path/to/downloads" --max-workers 4
+uwpd transcribe path/to/audio.mp3
 ```
 
-## Python API
+### Searching Transcripts
 
-You can also use the package programmatically:
-
-```python
-from uw_panopto_downloader.core import BrowserSession, PanoptoDownloader, VideoConverter
-
-# Initialize a browser session
-browser = BrowserSession(headless=False)
-browser.manual_login("https://panopto.uw.edu/your-course-page")
-
-# Download videos
-downloader = PanoptoDownloader(browser, max_workers=3)
-video_links = browser.extract_links()
-downloader.download_videos(video_links, "downloads")
-
-# Convert videos to audio
-converter = VideoConverter(bitrate="192k")
-converter.convert_directory("downloads", "audio")
+```bash
+uwpd db search "neural networks" --transcript
 ```
+
+## Command Reference
+
+The CLI is organized into the following main commands:
+
+### Core Commands
+
+| Command | Description |
+|---------|-------------|
+| `download` | Download videos from UW Panopto |
+| `convert` | Convert video files to audio format |
+| `cloud-transcribe` | Transcribe audio files using Google Cloud Speech-to-Text |
+| `transcribe` | Transcribe audio files using local Whisper model |
+| `config` | View or update configuration |
+| `version` | Show the current version |
+
+### Database Commands
+
+| Command | Description |
+|---------|-------------|
+| `db list` | List videos in the database |
+| `db search` | Search videos in the database |
+| `db info` | Display detailed information about a video |
+| `db tag` | Add or remove a tag for a video |
+| `db tags` | List all available tags with usage count |
+| `db delete` | Delete a video from the database |
+| `db note` | Add or update a note for a video |
+| `db stats` | Show database statistics |
+| `db migrate` | Migrate existing files to the database |
+
+## Detailed Usage
+
+### Downloading Videos
+
+```bash
+uwpd download --url "https://uw.hosted.panopto.com/Panopto/Pages/Sessions/List.aspx#folderID=..." \
+              --output ~/Videos/CSE142 \
+              --workers 3 \
+              --headless
+```
+
+This command will:
+1. Open a browser window for you to log in
+2. After login, automatically extract available videos
+3. Prompt confirmation before downloading
+4. Use 3 concurrent downloads for speed
+5. Store metadata in the local database
+
+### Google Cloud Speech-to-Text Transcription
+
+```bash
+uwpd cloud-transcribe ~/Videos/lecture.mp3 \
+                     --output ~/Transcripts/lecture.txt \
+                     --language en-US \
+                     --credentials path/to/google-credentials.json
+```
+
+Features:
+- Automatically splits long audio into chunks separated by silence for better accuracy
+- Produces timestamped transcripts for easy reference
+- Stores transcripts in searchable database
 
 ## Configuration
 
-The configuration is stored in `~/.uw-panopto-downloader/config.json` and includes:
+Configuration is stored in `~/.uw-panopto-downloader/config.json`. You can update it using:
 
-- `download_dir`: Default download directory
-- `max_workers`: Maximum number of concurrent downloads
-- `headless`: Whether to run the browser in headless mode
-- `audio_bitrate`: Default audio bitrate for conversion
-- `ffmpeg_threads`: Default number of FFmpeg threads
+```bash
+uwpd config --download-dir ~/Videos \
+            --max-workers 4 \
+            --headless True \
+            --audio-bitrate 192k
+```
+
+## Storage Management
+
+The tool uses a structured storage approach:
+- Content is stored in `~/.uw-panopto-downloader/content/`
+- Subdirectories for videos, audio, and transcripts
+- Symlinks created to original locations when desired
+- SQLite database tracks metadata at `~/.uw-panopto-downloader/metadata.db`
+
+## Google Cloud Integration
+
+This project leverages Google Cloud Speech-to-Text for high-quality transcription.
+
+For optimal transcription quality, the tool:
+1. Automatically converts audio to mono
+2. Splits audio at natural silence points
+3. Uses word-level time offsets for timestamps
+4. Assembles chunks into a cohesive transcript
+
+## Development
+
+To contribute to this project:
+
+```bash
+git clone https://github.com/elimelt/uw-panopto-downloader.git
+cd uw-panopto-downloader
+pip install -e ".[dev]"
+```
+
+### Bumping Version
+
+Use the provided script to bump the version before pushing changes/merging PRs (only for maintainers):
+
+```bash
+./bump-version.sh patch  # or minor or major
+```
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Created by Elijah Melton (elimelt@uw.edu)
+- Submitted for SWECCathon 2025!

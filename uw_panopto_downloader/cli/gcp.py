@@ -118,7 +118,7 @@ def cloud_transcribe_command(  # noqa: PLR0915
 
                     chunk_task = progress.add_task(
                         f"[green]Processing {os.path.basename(audio_path)}...",
-                        total=100,  # We'll use percentage complete
+                        total=100,
                         visible=True,
                     )
 
