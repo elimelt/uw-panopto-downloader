@@ -123,6 +123,8 @@ def cloud_transcribe_command(  # noqa: PLR0915
                     )
 
                     def update_chunk_progress(percent_complete):
+                        nonlocal chunk_task
+                        chunk_task = chunk_task or 0
                         progress.update(chunk_task, completed=percent_complete)
 
                     result = transcriber.transcribe(
