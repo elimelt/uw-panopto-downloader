@@ -697,6 +697,8 @@ def link_command( # noqa: PLR0915
                 stored_path, _ = storage.store_file(transcript_path)
                 print_success(f"Transcript stored at: {stored_path}")
                 db.update_video(video_id, {"transcript_path": stored_path})
+                content = open(stored_path, encoding="utf-8").read()
+                db.add_transcript(video_id, content)
             if video_path:
                 stored_path, _ = storage.store_file(video_path)
                 print_success(f"Video stored at: {stored_path}")
