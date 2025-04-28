@@ -102,7 +102,7 @@ def list_videos_command(
         db.close()
 
 
-def search_videos_command( # noqa: PLR0915
+def search_videos_command(  # noqa: PLR0915
     query: str = typer.Argument(..., help="Search query"),
     transcript: bool = typer.Option(True, "--transcript", "-t", help="Search in transcripts"),
     limit: int = typer.Option(10, "--limit", "-l", help="Maximum number of results to show"),
@@ -611,5 +611,99 @@ def migrate_command(  # noqa: PLR0915
         print_success(f"Successfully migrated: {migrated}")
         print_warning(f"Failed: {failed}")
 
+    finally:
+        db.close()
+
+
+def link_command( # noqa: PLR0915
+    video_id: int = typer.Argument(..., help="Video ID"),
+    transcript_path: Optional[str] = typer.Option(
+        None, "--transcript", "-t", help="Transcript file path"
+    ),
+    video_path: Optional[str] = typer.Option(None, "--video", "-v", help="Video file path"),
+    audio_path: Optional[str] = typer.Option(None, "--audio", "-a", help="Audio file path"),
+    delete: bool = typer.Option(
+        False, "--delete", "-d", help="Delete the existing file before linking"
+    ),
+    force: bool = typer.Option(False, "--force", "-f", help="Force link even if file exists"),
+    store: bool = typer.Option(
+        False, "--store", "-s", help="Store the file in the content directory"
+    ),
+):
+    """Link a video, audio, or transcript file to the database entry."""
+    if not db.connect():
+        print_error("Failed to connect to database")
+        return
+
+    try:
+        video = db.get_video(video_id)
+
+        if not video:
+            print_error(f"Video with ID {video_id} not found")
+            return
+
+        if delete:
+            if video["video_path"]:
+                storage.delete_file(video["video_path"])
+            if video["audio_path"]:
+                storage.delete_file(video["audio_path"])
+            if video["transcript_path"]:
+                storage.delete_file(video["transcript_path"])
+
+        if transcript_path:
+            if os.path.exists(transcript_path):
+                if delete or force:
+                    if db.update_video(video_id, {"transcript_path": transcript_path}):
+                        print_success(f"Transcript linked: {transcript_path}")
+                    else:
+                        print_error("Failed to link transcript")
+                else:
+                    print_warning(
+                        "Transcript file already exists. Use --delete or --force to overwrite."
+                    )
+            else:
+                print_error(f"Transcript file does not exist: {transcript_path}")
+                return
+        if video_path:
+            if os.path.exists(video_path):
+                if delete or force:
+                    if db.update_video(video_id, {"video_path": video_path}):
+                        print_success(f"Video linked: {video_path}")
+                    else:
+                        print_error("Failed to link video")
+                else:
+                    print_warning(
+                        "Video file already exists. Use --delete or --force to overwrite."
+                    )
+            else:
+                print_error(f"Video file does not exist: {video_path}")
+                return
+        if audio_path:
+            if os.path.exists(audio_path):
+                if delete or force:
+                    if db.update_video(video_id, {"audio_path": audio_path}):
+                        print_success(f"Audio linked: {audio_path}")
+                    else:
+                        print_error("Failed to link audio")
+                else:
+                    print_warning(
+                        "Audio file already exists. Use --delete or --force to overwrite."
+                    )
+            else:
+                print_error(f"Audio file does not exist: {audio_path}")
+                return
+        if store:
+            if transcript_path:
+                stored_path, _ = storage.store_file(transcript_path)
+                print_success(f"Transcript stored at: {stored_path}")
+                db.update_video(video_id, {"transcript_path": stored_path})
+            if video_path:
+                stored_path, _ = storage.store_file(video_path)
+                print_success(f"Video stored at: {stored_path}")
+                db.update_video(video_id, {"video_path": stored_path})
+            if audio_path:
+                stored_path, _ = storage.store_file(audio_path)
+                print_success(f"Audio stored at: {stored_path}")
+                db.update_video(video_id, {"audio_path": stored_path})
     finally:
         db.close()

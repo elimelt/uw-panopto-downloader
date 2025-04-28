@@ -1,4 +1,4 @@
-"""Main entry point for the UW Panopto Downloader CLI application."""
+"""Main entry point"""
 
 from importlib import metadata
 from typing import Optional
@@ -13,6 +13,7 @@ from .gcp import cloud_transcribe_command
 from .query import (
     add_note_command,
     delete_video_command,
+    link_command,
     list_tags_command,
     list_videos_command,
     migrate_command,
@@ -265,6 +266,39 @@ def migrate(
 ):
     """Migrate existing files to the database."""
     migrate_command(video_dir, audio_dir, transcript_dir)
+
+@db_app.command("link", help="Link assets to existing database entries")
+def link(
+    video_id: int = typer.Argument(..., help="Video ID"),
+    transcript_path: Optional[str] = typer.Option(
+        None, "--transcript", "-t", help="Transcript file path"
+    ),
+    video_path: Optional[str] = typer.Option(
+        None, "--video", "-v", help="Video file path"
+    ),
+    audio_path: Optional[str] = typer.Option(
+        None, "--audio", "-a", help="Audio file path"
+    ),
+    delete: bool = typer.Option(
+        False, "--delete", "-d", help="Delete the existing file before linking"
+    ),
+    force: bool = typer.Option(
+        False, "--force", "-f", help="Force link even if file exists"
+    ),
+    store: bool = typer.Option(
+        False, "--store", "-s", help="Store the file in the content directory"
+    ),
+):
+    """Migrate existing files to the database."""
+    link_command(
+        video_id,
+        transcript_path,
+        video_path,
+        audio_path,
+        delete,
+        force,
+        store
+    )
 
 
 if __name__ == "__main__":
