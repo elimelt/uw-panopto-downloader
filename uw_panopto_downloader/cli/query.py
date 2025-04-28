@@ -694,17 +694,17 @@ def link_command( # noqa: PLR0915
                 return
         if store:
             if transcript_path:
-                stored_path, _ = storage.store_file(transcript_path)
+                stored_path, _ = storage.store_transcript(transcript_path, video["title"])
                 print_success(f"Transcript stored at: {stored_path}")
                 db.update_video(video_id, {"transcript_path": stored_path})
                 content = open(stored_path, encoding="utf-8").read()
                 db.add_transcript(video_id, content)
             if video_path:
-                stored_path, _ = storage.store_file(video_path)
+                stored_path, _ = storage.store_video(video_path, video["title"])
                 print_success(f"Video stored at: {stored_path}")
                 db.update_video(video_id, {"video_path": stored_path})
             if audio_path:
-                stored_path, _ = storage.store_file(audio_path)
+                stored_path, _ = storage.store_audio(audio_path)
                 print_success(f"Audio stored at: {stored_path}")
                 db.update_video(video_id, {"audio_path": stored_path})
     finally:
